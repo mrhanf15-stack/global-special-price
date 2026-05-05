@@ -1,0 +1,695 @@
+{*
+  MRH 2026 – Produkt-Bildergalerie (product_gallery.html)
+  ═══════════════════════════════════════════════════════════
+  Vanilla JS | Kein jQuery | Kein EasyZoom
+  
+  Features:
+  - Inner-Zoom (Desktop): Zoom direkt im Bildcontainer (EasyZoom-Stil)
+  - Thumbnail-Wechsel per Klick (Desktop + Mobile)
+  - Fullscreen-Lightbox mit Prev/Next, Keyboard, Touch-Swipe
+  - Schema.org ImageGallery Microdata
+  - Responsive: Mobile-first, Touch-optimiert
+  - ARIA-Labels, Focus-Trap, Keyboard-Navigation
+  
+  Einbindung:
+  {include file="module/includes/product_gallery.html"}
+  
+  Benötigte Smarty-Variablen:
+  - $PRODUCTS_IMAGE (info_images Pfad)
+  - $PRODUCTS_NAME
+  - $more_images (Array mit PRODUCTS_IMAGE pro Bild)
+  - $PICTURESET_ACTIVE (true/false)
+  - $MANUFACTURER_IMAGE, $MANUFACTURER_LINK, $MANUFACTURER
+  - $SOCIALMEDIA_BUTTON
+  
+  Stand: 2026-04-02 | v4 – Thumbnails nur per Klick, popup_images (403 Fix)
+*}
+
+{* ── Schema.org ImageGallery (versteckt) ── *}
+{if $PRODUCTS_IMAGE != ''}
+  <div style="display:none;">
+    <meta content="product_images">
+    <div>
+      <meta content="{$PRODUCTS_IMAGE|replace:'info_images':'popup_images'}">
+      {if isset($more_images)}
+        {foreach item=more_images_data from=$more_images}
+          {if $more_images_data.PRODUCTS_IMAGE != ''}
+            <meta content="{$more_images_data.PRODUCTS_IMAGE|replace:'info_images':'popup_images'}">
+          {/if}
+        {/foreach}
+      {/if}
+    </div>
+  </div>
+{/if}
+
+{* ══════════════════════════════════════════════════════════════
+   HAUPTBILD MIT INNER-ZOOM (EasyZoom-Stil)
+   ══════════════════════════════════════════════════════════════ *}
+{if $PRODUCTS_IMAGE != ''}
+  <div class="mrh-gallery-main mb-3" id="mrhGalleryMain">
+    {* Inner-Zoom Container *}
+    <div class="mrh-zoom-container" id="mrhZoomContainer"
+         data-zoom-src="{$PRODUCTS_IMAGE|replace:'info_images':'popup_images'}">
+      <img class="mrh-zoom-img img-fluid rounded" 
+           id="mrhMainImage"
+           src="{$PRODUCTS_IMAGE|replace:'info_':'popup_'}"
+           data-zoom-src="{$PRODUCTS_IMAGE|replace:'info_images':'popup_images'}"
+           alt="{$PRODUCTS_NAME|onlytext}"
+           title="{$PRODUCTS_NAME|onlytext}"
+          
+           width="600" height="600"
+           loading="eager" />
+      {* Zoom-Hinweis *}
+      <div class="mrh-zoom-hint" id="mrhZoomHint">
+        <span class="fa fa-search-plus"></span>
+      </div>
+    </div>
+    {* Fullscreen-Trigger *}
+    <button type="button" class="mrh-gallery-fullscreen-btn" id="mrhGalleryFullscreenBtn" 
+            aria-label="{#MRH_zoomtext#|default:'Bild vergrößern'}" title="{#MRH_zoomtext#|default:'Bild vergrößern'}">
+      <span class="fa fa-expand"></span>
+    </button>
+    {* ── Hersteller-Logo Overlay (links oben) ── *}
+    {if isset($MANUFACTURER_LINK) && $MANUFACTURER_LINK != ''}
+      {if isset($MANUFACTURER_IMAGE) && $MANUFACTURER_IMAGE != ''}
+        <div class="mrh-mfg-overlay">
+          <a title="{$MANUFACTURER|onlytext}" href="{$MANUFACTURER_LINK}" aria-label="{$MANUFACTURER|onlytext}">
+            <img src="{$MANUFACTURER_IMAGE}" alt="{$MANUFACTURER|onlytext}" loading="lazy" />
+          </a>
+        </div>
+      {/if}
+    {/if}
+  </div>
+{/if}
+
+{* ══════════════════════════════════════════════════════════════
+   THUMBNAILS
+   ══════════════════════════════════════════════════════════════ *}
+{if isset($more_images) && count($more_images) > 0}
+  <div class="mrh-gallery-thumbs d-flex gap-2 flex-wrap mb-2" id="mrhGalleryThumbs">
+    {* Erstes Thumbnail = Hauptbild *}
+    <button type="button" class="mrh-thumb-btn active" 
+            data-popup="{$PRODUCTS_IMAGE|replace:'info_':'popup_'}"
+            data-original="{$PRODUCTS_IMAGE|replace:'info_images':'popup_images'}"
+            data-title="{$PRODUCTS_NAME|onlytext}"
+            aria-label="Bild 1" aria-pressed="true">
+      {if $smarty.const.PICTURESET_ACTIVE === true}
+        <img src="{$PRODUCTS_IMAGE|replace:'info_':'midi_'}" alt="{$PRODUCTS_NAME|onlytext}" 
+             loading="lazy" width="80" height="80" />
+      {else}
+        <img src="{$PRODUCTS_IMAGE|replace:'info_':'thumbnail_'}" alt="{$PRODUCTS_NAME|onlytext}" 
+             loading="lazy" width="80" height="80" />
+      {/if}
+    </button>
+    {* Weitere Thumbnails *}
+    {assign var=zaehl value=2}
+    {foreach key=i item=more_images_data from=$more_images}
+      {if $more_images_data.PRODUCTS_IMAGE != ''}
+        <button type="button" class="mrh-thumb-btn"
+                data-popup="{$more_images_data.PRODUCTS_IMAGE|replace:'info_images':'popup_images'}"
+                data-original="{$more_images_data.PRODUCTS_IMAGE|replace:'info_images':'popup_images'}"
+                data-title="{$PRODUCTS_NAME|onlytext}"
+                aria-label="Bild {$zaehl}" aria-pressed="false">
+          {if $smarty.const.PICTURESET_ACTIVE === true}
+            <img src="{$more_images_data.PRODUCTS_IMAGE|replace:'info_':'midi_'}" alt="{$PRODUCTS_NAME|onlytext}" 
+                 loading="lazy" width="80" height="80" />
+          {else}
+            <img src="{$more_images_data.PRODUCTS_IMAGE|replace:'info_':'thumbnail_'}" alt="{$PRODUCTS_NAME|onlytext}" 
+                 loading="lazy" width="80" height="80" />
+          {/if}
+        </button>
+        {assign var=zaehl value=$zaehl+1}
+      {/if}
+    {/foreach}
+  </div>
+{/if}
+
+{* Zoom-Hinweistext *}
+{if $PRODUCTS_IMAGE != ''}
+  <div class="small text-secondary mt-1 mb-3">
+    <span class="fa fa-search-plus me-1"></span>{#MRH_zoomtext#|default:'Hover für Zoom, Klick für Vollbild'}
+  </div>
+{/if}
+
+
+{* ── Social Share ── *}
+{if $SOCIALMEDIA_BUTTON != ''}{$SOCIALMEDIA_BUTTON}{/if}
+
+{* ══════════════════════════════════════════════════════════════
+   FULLSCREEN LIGHTBOX MODAL
+   ══════════════════════════════════════════════════════════════ *}
+<div class="mrh-lightbox-backdrop" id="mrhLightboxBackdrop" aria-hidden="true"></div>
+<div class="mrh-lightbox" id="mrhLightbox" role="dialog" aria-modal="true" aria-label="Bildergalerie" aria-hidden="true" tabindex="-1">
+  <div class="mrh-lightbox__header">
+    <span class="mrh-lightbox__counter" id="mrhLightboxCounter"></span>
+    <button type="button" class="mrh-lightbox__close" id="mrhLightboxClose" aria-label="Schließen">
+      <span class="fa fa-times"></span>
+    </button>
+  </div>
+  <div class="mrh-lightbox__body" id="mrhLightboxBody">
+    <button type="button" class="mrh-lightbox__nav mrh-lightbox__prev" id="mrhLightboxPrev" aria-label="Vorheriges Bild">
+      <span class="fa fa-chevron-left"></span>
+    </button>
+    <div class="mrh-lightbox__image-wrap" id="mrhLightboxImageWrap">
+      <img id="mrhLightboxImg" src="" alt="" />
+    </div>
+    <button type="button" class="mrh-lightbox__nav mrh-lightbox__next" id="mrhLightboxNext" aria-label="Nächstes Bild">
+      <span class="fa fa-chevron-right"></span>
+    </button>
+  </div>
+</div>
+
+{* ══════════════════════════════════════════════════════════════
+   STYLES – Scoped via .mrh-
+   ══════════════════════════════════════════════════════════════ *}
+<style>
+/* ── Gallery Main ── */
+.mrh-gallery-main {
+  position: relative;
+}
+
+.mrh-zoom-container {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--mrh-border, #E2E8F0);
+  border-radius: var(--mrh-radius-lg, 0.75rem);
+  background: var(--mrh-bg, #F8FAFC);
+  cursor: crosshair;
+}
+
+.mrh-zoom-container img.mrh-zoom-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: opacity 0.25s ease;
+}
+
+/* Inner-Zoom: Bild ausblenden wenn gezoomt */
+.mrh-zoom-container.is-zooming img.mrh-zoom-img {
+  opacity: 0;
+}
+
+/* Inner-Zoom: Hintergrundbild zeigt gezoomte Version */
+.mrh-zoom-container.is-zooming {
+  background-size: var(--zoom-bg-width, 200%) var(--zoom-bg-height, 200%);
+  background-repeat: no-repeat;
+  background-position: var(--zoom-bg-x, center) var(--zoom-bg-y, center);
+}
+
+/* Zoom-Hint Icon */
+.mrh-zoom-hint {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.9);
+  border-radius: 50%;
+  color: var(--mrh-slate, #64748B);
+  font-size: 0.875rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.mrh-zoom-container.is-zooming .mrh-zoom-hint {
+  opacity: 0;
+}
+
+/* Fullscreen Button */
+.mrh-gallery-fullscreen-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.9);
+  border: none;
+  border-radius: 50%;
+  color: var(--mrh-slate, #64748B);
+  font-size: 0.875rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.mrh-gallery-fullscreen-btn:hover {
+  background: var(--mrh-green, #16A34A);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* ── Thumbnails ── */
+.mrh-thumb-btn {
+  width: 72px;
+  height: 72px;
+  padding: 2px;
+  border: 2px solid var(--mrh-border, #E2E8F0);
+  border-radius: var(--mrh-radius, 0.5rem);
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.mrh-thumb-btn:hover {
+  border-color: var(--mrh-slate-lt, #CBD5E1);
+}
+
+.mrh-thumb-btn.active {
+  border-color: var(--mrh-green, #16A34A);
+  box-shadow: 0 0 0 1px var(--mrh-green, #16A34A);
+}
+
+.mrh-thumb-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: calc(var(--mrh-radius, 0.5rem) - 4px);
+}
+
+/* ── Lightbox ── */
+.mrh-lightbox-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.92);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mrh-lightbox-backdrop.is-active {
+  display: block;
+  opacity: 1;
+}
+
+.mrh-lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  flex-direction: column;
+}
+
+.mrh-lightbox.is-active {
+  display: flex;
+}
+
+.mrh-lightbox__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  flex-shrink: 0;
+}
+
+.mrh-lightbox__counter {
+  color: rgba(255,255,255,0.7);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.mrh-lightbox__close {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.mrh-lightbox__close:hover {
+  background: rgba(255,255,255,0.2);
+  color: #f87171;
+}
+
+.mrh-lightbox__body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem 1rem;
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+.mrh-lightbox__image-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+}
+
+.mrh-lightbox__image-wrap img {
+  max-width: 100%;
+  max-height: calc(100vh - 120px);
+  object-fit: contain;
+  border-radius: 4px;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.mrh-lightbox__nav {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 1.125rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.mrh-lightbox__nav:hover {
+  background: rgba(255,255,255,0.2);
+  transform: scale(1.1);
+}
+
+/* ── Mobile Anpassungen ── */
+@media (max-width: 991.98px) {
+  /* Kein Inner-Zoom auf Tablet/Mobile – Tap öffnet Lightbox */
+  .mrh-zoom-container {
+    cursor: pointer;
+  }
+  .mrh-zoom-container.is-zooming img.mrh-zoom-img {
+    opacity: 1;
+  }
+  .mrh-zoom-container.is-zooming {
+    background-image: none !important;
+  }
+  .mrh-zoom-hint {
+    display: none !important;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .mrh-thumb-btn {
+    width: 60px;
+    height: 60px;
+  }
+  .mrh-lightbox__nav {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+}
+
+/* ── Print ── */
+@media print {
+  .mrh-zoom-hint,
+  .mrh-gallery-fullscreen-btn,
+  .mrh-lightbox,
+  .mrh-lightbox-backdrop {
+    display: none !important;
+  }
+}
+</style>
+
+{* ══════════════════════════════════════════════════════════════
+   SCRIPT – Vanilla JS Galerie mit Inner-Zoom
+   ══════════════════════════════════════════════════════════════ *}
+<script>
+(function() {
+  'use strict';
+
+  /* ── DOM-Referenzen ── */
+  var mainImage     = document.getElementById('mrhMainImage');
+  var zoomContainer = document.getElementById('mrhZoomContainer');
+  var fullscreenBtn = document.getElementById('mrhGalleryFullscreenBtn');
+  var thumbsWrap    = document.getElementById('mrhGalleryThumbs');
+
+  var lightbox      = document.getElementById('mrhLightbox');
+  var lbBackdrop    = document.getElementById('mrhLightboxBackdrop');
+  var lbClose       = document.getElementById('mrhLightboxClose');
+  var lbPrev        = document.getElementById('mrhLightboxPrev');
+  var lbNext        = document.getElementById('mrhLightboxNext');
+  var lbImg         = document.getElementById('mrhLightboxImg');
+  var lbCounter     = document.getElementById('mrhLightboxCounter');
+
+  if (!mainImage) return;
+
+  /* ── Bilder-Array aufbauen ── */
+  var images = [];
+  var currentIndex = 0;
+  var isMobile = window.matchMedia('(max-width: 991.98px)').matches;
+
+  function collectImages() {
+    images = [];
+    if (thumbsWrap) {
+      var btns = thumbsWrap.querySelectorAll('.mrh-thumb-btn');
+      btns.forEach(function(btn) {
+        images.push({
+          popup: btn.getAttribute('data-popup') || '',
+          original: btn.getAttribute('data-original') || '',
+          title: btn.getAttribute('data-title') || ''
+        });
+      });
+    }
+    /* Fallback: nur Hauptbild */
+    if (images.length === 0) {
+      images.push({
+        popup: mainImage.src,
+        original: mainImage.getAttribute('data-zoom-src') || mainImage.src,
+        title: mainImage.alt || ''
+      });
+    }
+  }
+  collectImages();
+
+  /* ══════════════════════════════════════════════════════════
+     THUMBNAIL-WECHSEL
+     ══════════════════════════════════════════════════════════ */
+  if (thumbsWrap) {
+    /* Thumbnail-Wechsel NUR per Klick (Desktop + Mobile) */
+    thumbsWrap.addEventListener('click', function(e) {
+      var btn = e.target.closest('.mrh-thumb-btn');
+      if (!btn) return;
+      switchImage(btn);
+    });
+  }
+
+  function switchImage(btn) {
+    var popup = btn.getAttribute('data-popup');
+    var original = btn.getAttribute('data-original');
+    if (!popup) return;
+
+    /* Hauptbild wechseln */
+    mainImage.src = popup;
+    mainImage.setAttribute('data-zoom-src', original || popup);
+
+    /* Zoom-Src auf Container aktualisieren */
+    if (zoomContainer) {
+      zoomContainer.setAttribute('data-zoom-src', original || popup);
+      zoomContainer.style.backgroundImage = '';
+      zoomContainer.classList.remove('is-zooming');
+      zoomImageLoaded = false;
+    }
+
+    /* Active-State */
+    if (thumbsWrap) {
+      thumbsWrap.querySelectorAll('.mrh-thumb-btn').forEach(function(b, i) {
+        var isActive = (b === btn);
+        b.classList.toggle('active', isActive);
+        b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        if (isActive) currentIndex = i;
+      });
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     INNER-ZOOM (EasyZoom-Stil, nur Desktop)
+     ══════════════════════════════════════════════════════════ */
+  var zoomImageLoaded = false;
+  var zoomNatW = 0;
+  var zoomNatH = 0;
+
+  if (zoomContainer && !isMobile) {
+
+    /* Zoom-Bild vorladen */
+    function preloadZoomImage(callback) {
+      var zoomSrc = zoomContainer.getAttribute('data-zoom-src') || mainImage.getAttribute('data-zoom-src') || mainImage.src;
+      var preloader = new Image();
+      preloader.onload = function() {
+        zoomNatW = preloader.naturalWidth;
+        zoomNatH = preloader.naturalHeight;
+        zoomContainer.style.backgroundImage = 'url("' + zoomSrc + '")';
+        zoomContainer.style.backgroundRepeat = 'no-repeat';
+        zoomContainer.style.backgroundSize = '200% 200%';
+        zoomImageLoaded = true;
+        if (callback) callback();
+      };
+      preloader.src = zoomSrc;
+    }
+
+    zoomContainer.addEventListener('mouseenter', function() {
+      if (!zoomImageLoaded) {
+        preloadZoomImage(function() {
+          zoomContainer.classList.add('is-zooming');
+        });
+      } else {
+        zoomContainer.classList.add('is-zooming');
+      }
+    });
+
+    zoomContainer.addEventListener('mouseleave', function() {
+      zoomContainer.classList.remove('is-zooming');
+    });
+
+    zoomContainer.addEventListener('mousemove', function(e) {
+      if (!zoomImageLoaded) return;
+
+      var rect = zoomContainer.getBoundingClientRect();
+      /* Mausposition als Prozent (0-100) */
+      var xPct = ((e.clientX - rect.left) / rect.width) * 100;
+      var yPct = ((e.clientY - rect.top) / rect.height) * 100;
+
+      /* Begrenzen auf 0-100 */
+      xPct = Math.max(0, Math.min(100, xPct));
+      yPct = Math.max(0, Math.min(100, yPct));
+
+      /* Zoom-Faktor berechnen (wie groß das Hintergrundbild relativ zum Container ist) */
+      var zoomFactor = Math.max(2, zoomNatW / rect.width);
+      /* Begrenzen auf max 4x */
+      zoomFactor = Math.min(4, zoomFactor);
+
+      var bgW = zoomFactor * 100;
+      var bgH = zoomFactor * 100;
+
+      /* CSS Custom Properties setzen für smooth rendering */
+      zoomContainer.style.setProperty('--zoom-bg-width', bgW + '%');
+      zoomContainer.style.setProperty('--zoom-bg-height', bgH + '%');
+      zoomContainer.style.setProperty('--zoom-bg-x', xPct + '%');
+      zoomContainer.style.setProperty('--zoom-bg-y', yPct + '%');
+    });
+
+    /* Klick öffnet Lightbox */
+    zoomContainer.addEventListener('click', function(e) {
+      e.preventDefault();
+      openLightbox(currentIndex);
+    });
+
+  } else if (zoomContainer && isMobile) {
+    /* Mobile: Tap öffnet Lightbox */
+    zoomContainer.addEventListener('click', function(e) {
+      e.preventDefault();
+      openLightbox(currentIndex);
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     FULLSCREEN LIGHTBOX
+     ══════════════════════════════════════════════════════════ */
+  function openLightbox(index) {
+    if (!lightbox || !lbBackdrop) return;
+    if (index < 0) index = images.length - 1;
+    if (index >= images.length) index = 0;
+    currentIndex = index;
+
+    var img = images[currentIndex];
+    lbImg.src = img.original || img.popup;
+    lbImg.alt = img.title;
+    if (lbCounter) {
+      lbCounter.textContent = (currentIndex + 1) + ' / ' + images.length;
+    }
+
+    /* Nav-Buttons nur bei > 1 Bild */
+    if (lbPrev) lbPrev.style.display = images.length > 1 ? '' : 'none';
+    if (lbNext) lbNext.style.display = images.length > 1 ? '' : 'none';
+
+    lbBackdrop.classList.add('is-active');
+    lightbox.classList.add('is-active');
+    lightbox.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    lightbox.focus();
+  }
+
+  function closeLightbox() {
+    if (!lightbox || !lbBackdrop) return;
+    lbBackdrop.classList.remove('is-active');
+    lightbox.classList.remove('is-active');
+    lightbox.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    lbImg.src = '';
+  }
+
+  function navigateLightbox(dir) {
+    openLightbox(currentIndex + dir);
+  }
+
+  /* Fullscreen-Button */
+  if (fullscreenBtn) {
+    fullscreenBtn.addEventListener('click', function() {
+      openLightbox(currentIndex);
+    });
+  }
+
+  /* Lightbox schließen */
+  if (lbClose) lbClose.addEventListener('click', closeLightbox);
+  if (lbBackdrop) lbBackdrop.addEventListener('click', closeLightbox);
+
+  /* Lightbox Navigation */
+  if (lbPrev) lbPrev.addEventListener('click', function() { navigateLightbox(-1); });
+  if (lbNext) lbNext.addEventListener('click', function() { navigateLightbox(1); });
+
+  /* Keyboard */
+  document.addEventListener('keydown', function(e) {
+    if (!lightbox || !lightbox.classList.contains('is-active')) return;
+    if (e.key === 'Escape') { closeLightbox(); e.preventDefault(); }
+    if (e.key === 'ArrowLeft') { navigateLightbox(-1); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { navigateLightbox(1); e.preventDefault(); }
+  });
+
+  /* Touch-Swipe (Lightbox) */
+  if (lightbox) {
+    var touchStartX = 0;
+    var touchStartY = 0;
+
+    lightbox.addEventListener('touchstart', function(e) {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    lightbox.addEventListener('touchend', function(e) {
+      var diffX = e.changedTouches[0].screenX - touchStartX;
+      var diffY = e.changedTouches[0].screenY - touchStartY;
+      /* Nur horizontale Swipes (nicht vertikal scrollen) */
+      if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+        if (diffX > 0) navigateLightbox(-1);
+        else navigateLightbox(1);
+      }
+    }, { passive: true });
+  }
+
+  /* ── Responsive: isMobile bei Resize aktualisieren ── */
+  var resizeTimeout;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(function() {
+      isMobile = window.matchMedia('(max-width: 991.98px)').matches;
+    }, 250);
+  }, { passive: true });
+
+})();
+</script>
