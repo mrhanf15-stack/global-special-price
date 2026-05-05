@@ -117,7 +117,7 @@ switch ($action) {
 			                               WHERE c.categories_id = cd.categories_id
 			                                 AND cd.language_id = '" . xtc_db_input((int)$_SESSION['languages_id']) . "' 
 			                                 AND c.parent_id = '" . xtc_db_input((int)$parent_id) . "'
-			                            ORDER BY active_specials_count DESC, c.sort_order, c.categories_id ASC");
+			                            ORDER BY (active_specials_count > 0) DESC, cd.categories_name ASC");
         $num_selected_rows = xtc_db_num_rows($categories_query);
 
 }
