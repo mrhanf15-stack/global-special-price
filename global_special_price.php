@@ -21,6 +21,8 @@
    -----------------------------------------------------------------------------------------------
     v1.2 - Fix: specials_old_products_price wird jetzt korrekt gesetzt
          - Neu: Spalte zeigt vorhandene Sonderpreise pro Kategorie an
+    v1.3 - Spalte zeigt jetzt auch Rabatt-% und Gueltigkeitsdaten (ab/bis)
+         - Sortierung: Kategorien mit aktiven Specials werden nach vorne gereiht
    -----------------------------------------------------------------------------------------------
  */
 
@@ -106,13 +108,16 @@ switch ($action) {
 
     default:
         $parent_id = isset($_GET['category']) ? $_GET['category'] : 0;
-        $categories_query = xtc_db_query("SELECT c.categories_id, c.categories_status, cd.categories_name
+        $categories_query = xtc_db_query("SELECT c.categories_id, c.categories_status, cd.categories_name,
+                                            (SELECT COUNT(*) FROM " . TABLE_SPECIALS . " s 
+                                             JOIN " . TABLE_PRODUCTS_TO_CATEGORIES . " p2c ON s.products_id = p2c.products_id 
+                                             WHERE p2c.categories_id = c.categories_id AND s.status = 1) as active_specials_count
 			                                FROM " . TABLE_CATEGORIES . " c,
 				                                 " . TABLE_CATEGORIES_DESCRIPTION . " cd
 			                               WHERE c.categories_id = cd.categories_id
 			                                 AND cd.language_id = '" . xtc_db_input((int)$_SESSION['languages_id']) . "' 
 			                                 AND c.parent_id = '" . xtc_db_input((int)$parent_id) . "'
-			                            ORDER BY c.sort_order, c.categories_id ASC");
+			                            ORDER BY active_specials_count DESC, c.sort_order, c.categories_id ASC");
         $num_selected_rows = xtc_db_num_rows($categories_query);
 
 }
@@ -152,7 +157,7 @@ require_once (DIR_WS_INCLUDES.'javascript/jQueryDateTimePicker/datepicker.js.php
 
             <div class="pageHeadingImage"><?php echo xtc_image(DIR_WS_ICONS . 'heading/icon_configuration.png'); ?></div>
             <div class="pageHeading"><?php echo HEADING_TITLE; ?></div>
-            <div class="main pdg2 flt-l"><?php echo 'Global Special Price v1.2'; ?><br /></div>
+            <div class="main pdg2 flt-l"><?php echo 'Global Special Price v1.3'; ?><br /></div>
                 <table class="main important_info" width="100%" border="0" cellspacing="1" cellpadding="2">
                     <tr>
                         <td class="main"><?php echo CONTENT_NOTE; ?></td>
@@ -187,12 +192,15 @@ require_once (DIR_WS_INCLUDES.'javascript/jQueryDateTimePicker/datepicker.js.php
                         while ($categories = xtc_db_fetch_array($categories_query)) {
                             $products_anzahl = xtc_count_products_in_category($categories['categories_id'],true);
                             
-                            // Neue Spalte: Vorhandene Specials in dieser Kategorie zaehlen
+                            // Neue Spalte: Vorhandene Specials in dieser Kategorie zaehlen inkl. Rabatt-% und Daten
                             $specials_info_query = xtc_db_query("SELECT 
                                 COUNT(CASE WHEN s.status = 1 THEN 1 END) as active_count,
                                 COUNT(CASE WHEN s.status = 0 THEN 1 END) as inactive_count,
                                 MIN(CASE WHEN s.status = 1 THEN s.specials_new_products_price END) as min_price,
-                                MAX(CASE WHEN s.status = 1 THEN s.expires_date END) as max_expires
+                                MAX(CASE WHEN s.status = 1 THEN s.expires_date END) as max_expires,
+                                MIN(CASE WHEN s.status = 1 THEN s.specials_date_added END) as min_start,
+                                AVG(CASE WHEN s.status = 1 AND s.specials_old_products_price > 0 
+                                    THEN ROUND((1 - s.specials_new_products_price / s.specials_old_products_price) * 100, 0) END) as avg_discount
                                 FROM " . TABLE_SPECIALS . " s
                                 JOIN " . TABLE_PRODUCTS_TO_CATEGORIES . " p2c ON s.products_id = p2c.products_id
                                 WHERE p2c.categories_id = '" . (int)$categories['categories_id'] . "'");
@@ -230,8 +238,19 @@ require_once (DIR_WS_INCLUDES.'javascript/jQueryDateTimePicker/datepicker.js.php
                                     <?php 
                                     if ($specials_info['active_count'] > 0) {
                                         echo '<span class="badge badge-active">' . (int)$specials_info['active_count'] . ' aktiv</span>';
+                                        // Rabatt-% anzeigen
+                                        if (!empty($specials_info['avg_discount'])) {
+                                            echo ' <span class="badge badge-active">-' . (int)$specials_info['avg_discount'] . '%</span>';
+                                        }
+                                        // Gueltig ab
+                                        if (!empty($specials_info['min_start']) && $specials_info['min_start'] != '0000-00-00 00:00:00') {
+                                            echo '<br><small>ab ' . date('Y-m-d', strtotime($specials_info['min_start'])) . '</small>';
+                                        }
+                                        // Gueltig bis
                                         if (!empty($specials_info['max_expires']) && $specials_info['max_expires'] != '0000-00-00 00:00:00') {
-                                            echo '<br><small>bis ' . date('d.m.Y', strtotime($specials_info['max_expires'])) . '</small>';
+                                            echo '<br><small>bis ' . date('Y-m-d', strtotime($specials_info['max_expires'])) . '</small>';
+                                        } else {
+                                            echo '<br><small>bis: unbegrenzt</small>';
                                         }
                                     } else {
                                         echo '<span class="badge badge-none">keine</span>';
