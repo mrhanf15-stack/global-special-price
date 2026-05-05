@@ -1,0 +1,1182 @@
+{*
+  MRH 2026 – Produktdetailseite (product_info.html)
+  ═══════════════════════════════════════════════════════════════
+  Modified eCommerce 3.3.0 | Bootstrap 5.3 | Vanilla JS
+  Kein jQuery, kein EasyZoom-Pflicht
+  
+  Struktur (Wireframe v2):
+  ─────────────────────────────────────────────────────────────
+  1. Breadcrumb
+  2. Zwei-Spalten-Layout (Galerie links | Infos rechts)
+     - Galerie: Hauptbild + Thumbnails (Modal-Lightbox)
+     - Infos: Hersteller, H1, Bewertung, Picto-Leiste,
+              Quality Control, Short Description / MRH Characteristics,
+              Shipping Tooltip, Optionen, Preis, Warenkorb, Trust-Icons
+  3. Eigenschafts-Bildkarten (2×4 Grid) – {$PRODUCTS_MRH_CHARACTERISTICS}
+  4. Beschreibung (volle Breite)
+  5. FAQ-Platzhalter (separates Modul geplant)
+  6. Bewertungen + Hersteller-Info (Accordion)
+  7. Cross-Selling / Auch gekauft / Kategorie
+  8. Produkt-Navigator
+  9. Schema.org JSON-LD
+  
+  Includes:
+  - module/includes/price_info.html
+  - module/includes/list_shortdescription.html
+  - module/includes/shiping_tooltip.html
+  - module/includes/quality_control.html
+  - module/includes/schema_org_product.html
+  
+  Stand: 2026-04-01
+*}
+
+{config_load file="$language/lang_$language.conf" section="product_info"}
+{config_load file="lang_`$language`.custom"}
+{config_load file="lang_`$language`.section" section="product_info"}
+
+{* ── Alerts ── *}
+{if $error_message != ''}<div class="alert alert-danger">{$error_message}</div>{/if}
+{if isset($success_message) && $success_message != ''}<div class="alert alert-success">{$success_message}</div>{/if}
+
+{* ══════════════════════════════════════════════════════════════
+   PRODUCT WRAPPER
+   ══════════════════════════════════════════════════════════════ *}
+<article class="mrh-product-info">
+  {$FORM_ACTION}
+
+  {* ── 1. BREADCRUMB ── *}
+  {if isset($BREADCRUMB)}
+    <nav aria-label="Breadcrumb" class="mb-3">
+      <ol class="breadcrumb small">
+        {foreach name=bc item=bc_item from=$BREADCRUMB}
+          <li class="breadcrumb-item{if $smarty.foreach.bc.last} active{/if}">
+            {if !$smarty.foreach.bc.last}
+              <a href="{$bc_item.HREF}">
+                <span>{$bc_item.NAME}</span>
+              </a>
+            {else}
+              <span>{$bc_item.NAME}</span>
+            {/if}
+          </li>
+        {/foreach}
+      </ol>
+    </nav>
+  {/if}
+
+  {* ══════════════════════════════════════════════════════════════
+     2. ZWEI-SPALTEN-LAYOUT
+     ══════════════════════════════════════════════════════════════ *}
+  <div id="product_details" class="row g-4">
+
+    {* ────────────────────────────────────────────────────────────
+       LINKE SPALTE: Bildergalerie (col-12 col-lg-6, sticky)
+       ──────────────────────────────────────────────────────────── *}
+    <div class="col-12 col-lg-6">
+      <div class="mrh-gallery position-lg-sticky" style="top: 5rem;">
+
+        {* ══════════════════════════════════════════════════════════════
+           BILDERGALERIE – Hover-Zoom, Lightbox, Thumbnails (Vanilla JS)
+           ══════════════════════════════════════════════════════════════ *}
+
+
+
+        {* ── Hauptbild mit Hover-Zoom ── *}
+        {if $PRODUCTS_IMAGE != ''}
+          <div class="mrh-gallery-main mb-3" id="mrhGalleryMain">
+            <div class="mrh-zoom-container" id="mrhZoomContainer">
+              <img class="mrh-zoom-img img-fluid rounded" 
+                   id="mrhMainImage"
+                   src="{$PRODUCTS_IMAGE|replace:'info_':'popup_'}"
+                   data-zoom-src="{$PRODUCTS_IMAGE|replace:'info_images':'original_images'}"
+                   alt="{$PRODUCTS_NAME|onlytext}"
+                   title="{$PRODUCTS_NAME|onlytext}"
+                   width="600" height="600"
+                   loading="eager" />
+              <div class="mrh-zoom-lens" id="mrhZoomLens" aria-hidden="true"></div>
+              <div class="mrh-zoom-hint" id="mrhZoomHint">
+                <span class="fa fa-search-plus"></span>
+              </div>
+            </div>
+            <div class="mrh-zoom-flyout" id="mrhZoomFlyout" aria-hidden="true">
+              <img id="mrhZoomFlyoutImg" src="" alt="" />
+            </div>
+            <button type="button" class="mrh-gallery-fullscreen-btn" id="mrhGalleryFullscreenBtn" 
+                    aria-label="{#MRH_zoomtext#|default:'Bild vergrößern'}" title="{#MRH_zoomtext#|default:'Bild vergrößern'}">
+              <span class="fa fa-expand"></span>
+            </button>
+          </div>
+        {/if}
+
+        {* ── Thumbnails ── *}
+        {if isset($more_images) && count($more_images) > 0}
+          <div class="mrh-gallery-thumbs d-flex gap-2 flex-wrap mb-2" id="mrhGalleryThumbs">
+            <button type="button" class="mrh-thumb-btn active" 
+                    data-popup="{$PRODUCTS_IMAGE|replace:'info_':'popup_'}"
+                    data-original="{$PRODUCTS_IMAGE|replace:'info_images':'original_images'}"
+                    data-title="{$PRODUCTS_NAME|onlytext}"
+                    aria-label="Bild 1" aria-pressed="true">
+              {if $smarty.const.PICTURESET_ACTIVE === true}
+                <img src="{$PRODUCTS_IMAGE|replace:'info_':'midi_'}" alt="{$PRODUCTS_NAME|onlytext}" 
+                     loading="lazy" width="80" height="80" />
+              {else}
+                <img src="{$PRODUCTS_IMAGE|replace:'info_':'thumbnail_'}" alt="{$PRODUCTS_NAME|onlytext}" 
+                     loading="lazy" width="80" height="80" />
+              {/if}
+            </button>
+            {assign var=zaehl value=2}
+            {foreach key=i item=more_images_data from=$more_images}
+              {if $more_images_data.PRODUCTS_IMAGE != ''}
+                <button type="button" class="mrh-thumb-btn"
+                        data-popup="{$more_images_data.PRODUCTS_IMAGE|replace:'info_images':'popup_images'}"
+                        data-original="{$more_images_data.PRODUCTS_IMAGE|replace:'info_images':'original_images'}"
+                        data-title="{$PRODUCTS_NAME|onlytext}"
+                        aria-label="Bild {$zaehl}" aria-pressed="false">
+                  {if $smarty.const.PICTURESET_ACTIVE === true}
+                    <img src="{$more_images_data.PRODUCTS_IMAGE|replace:'info_':'midi_'}" alt="{$PRODUCTS_NAME|onlytext}" 
+                         loading="lazy" width="80" height="80" />
+                  {else}
+                    <img src="{$more_images_data.PRODUCTS_IMAGE|replace:'info_':'thumbnail_'}" alt="{$PRODUCTS_NAME|onlytext}" 
+                         loading="lazy" width="80" height="80" />
+                  {/if}
+                </button>
+                {assign var=zaehl value=$zaehl+1}
+              {/if}
+            {/foreach}
+          </div>
+        {/if}
+
+        {* Zoom-Hinweistext *}
+        {if $PRODUCTS_IMAGE != ''}
+          <div class="small text-secondary mt-1 mb-3">
+            <span class="fa fa-search-plus me-1"></span>{#MRH_zoomtext#|default:'Hover für Zoom, Klick für Vollbild'}
+          </div>
+        {/if}
+
+        {* ── Hersteller-Logo (unter Bild) ── *}
+        {if isset($MANUFACTURER_LINK) && $MANUFACTURER_LINK != ''}
+          {if isset($MANUFACTURER_IMAGE) && $MANUFACTURER_IMAGE != ''}
+            <div class="text-center mb-3">
+              <a title="{$MANUFACTURER|onlytext}" href="{$MANUFACTURER_LINK}">
+                <img class="img-fluid" src="{$MANUFACTURER_IMAGE}" alt="{$MANUFACTURER|onlytext}"
+                     style="max-width:120px" loading="lazy" />
+              </a>
+            </div>
+          {/if}
+        {/if}
+
+        {* ── Social Share (Shariff v3.3.1 – DSGVO-konform) ── *}
+        {if $SOCIALMEDIA_BUTTON != ''}{$SOCIALMEDIA_BUTTON}{/if}
+          <div class="mrh-shariff-wrap mt-3">
+            <p class="small text-muted mb-2"><span class="fa-solid fa-share-nodes me-1"></span>Teilen:</p>
+            <div class="shariff"
+                 data-services="[&quot;whatsapp&quot;,&quot;facebook&quot;,&quot;twitter&quot;,&quot;telegram&quot;,&quot;mail&quot;,&quot;pinterest&quot;]"
+                 data-lang="de"
+                 data-theme="standard"
+                 data-orientation="horizontal"
+                 data-button-style="icon"
+                 data-mail-subject="{$PRODUCTS_NAME|onlytext} bei {$smarty.const.STORE_NAME}"
+                 data-mail-body="Schau dir das an: {$PRODUCTS_NAME|onlytext}"
+            ></div>
+          </div>
+
+      </div>
+    </div>
+
+    {* ────────────────────────────────────────────────────────────
+       RECHTE SPALTE: Produktinfos (col-12 col-lg-6)
+       ──────────────────────────────────────────────────────────── *}
+    <div class="col-12 col-lg-6">
+
+      {* Hersteller *}
+      {if isset($MANUFACTURER) && $MANUFACTURER != ''}
+        <div class="mrh-pi-manufacturer mb-2">
+          <a href="{$MANUFACTURER_LINK}" class="small text-muted text-decoration-none">
+            <span>{$MANUFACTURER}</span>
+          </a>
+        </div>
+      {/if}
+
+      {* Produktname *}
+      <h1 class="h3 mb-3">
+        {if $PRODUCTS_HEADING_TITLE != ''}{$PRODUCTS_HEADING_TITLE}{else}{$PRODUCTS_NAME}{/if}
+      </h1>
+
+      {* Bewertungen (Sterne) *}
+      {if isset($PRODUCTS_RATING_COUNT) && $PRODUCTS_RATING_COUNT > 0}
+        <div class="mrh-rating mb-3">
+          {if isset($MRH_AWIDS_PRODUCTS_AVERAGE_PERCENT) && $MRH_AWIDS_PRODUCTS_AVERAGE_PERCENT}
+            <span class="d-inline">
+              <a class="mrh_avg_container text-decoration-none" href="#mrh-reviews"
+                 data-pid="{$PRODUCTS_ID}" data-class="prod"
+                 title="{$smarty.const.MRH_AWIDSRATINGBREAKDOWN_ARROW_TITLE}">
+                <span class="ratings">
+                  <span class="fas empty-stars"></span>
+                  <span class="fas full-stars" style="width:{$MRH_AWIDS_PRODUCTS_AVERAGE_PERCENT}%"></span>
+                </span>
+                &nbsp;({if isset($MRH_AWIDS_PRODUCTS_SUM_REVIEWS)}{$MRH_AWIDS_PRODUCTS_SUM_REVIEWS}{else}{$PRODUCTS_RATING_COUNT}{/if})
+              </a>
+            </span>
+          {else}
+            <span class="pd_reviews_image">
+              <img src="{$tpl_path}img/stars_{$PRODUCTS_AVERAGE_RATING}.png"
+                   alt="{$smarty.const.TEXT_OF_5_STARS|sprintf:$PRODUCTS_AVERAGE_RATING}" />
+            </span>
+            <a href="#mrh-reviews" class="small text-muted ms-1">({$PRODUCTS_RATING_COUNT} {#text_reviews#})</a>
+          {/if}
+
+        </div>
+      {/if}
+
+      {* ── Picto-Leiste / MRH Badges (Auszeichnungen) ── *}
+      {if isset($mrh_badges) && $mrh_badges != ''}
+        <div class="mrh-picto-bar">
+          {$mrh_badges}
+        </div>
+      {elseif isset($PRODUCTS_PICTO_ICONS) && $PRODUCTS_PICTO_ICONS != ''}
+        <div class="mrh-picto-bar">
+          {$PRODUCTS_PICTO_ICONS}
+        </div>
+      {/if}
+
+      {* ── BOC – QUALITY CONTROL ── *}
+      {include file="module/includes/quality_control.html"}
+
+      {* ── Short Description / MRH Characteristics ── *}
+      {if !empty($PRODUCTS_SHORT_DESCRIPTION)}
+        <div class="mrh-short-desc mb-3 lr_desc">
+          {$PRODUCTS_SHORT_DESCRIPTION}
+        </div>
+      {else}
+        {if isset($PRODUCTS_MRH_CHARACTERISTICS) && $PRODUCTS_MRH_CHARACTERISTICS != ''}
+          <div class="mrh-characteristics mb-3 NEUCLASSE">
+            {$PRODUCTS_MRH_CHARACTERISTICS}
+          </div>
+        {/if}
+      {/if}
+
+      {* ── MRH Attribut-Tabelle (serverseitig, Detail-Ansicht) ── *}
+      {if isset($mrh_mini_table) && $mrh_mini_table != ''}
+        <div class="mrh-detail-table mb-3">
+          {$mrh_mini_table}
+        </div>
+      {/if}
+
+      {* ── Hersteller / Art.Nr. / EAN / Versand (immer sichtbar) ── *}
+      {include file="module/includes/product_meta_rows.html"}
+
+      {* ── Lagerbestand-Legende + Optionen ── *}
+      {if isset($MODULE_product_options) && $MODULE_product_options != ''}
+        {if $SHIPPING_NAME != 'ca. 2 Wochen' && $SHIPPING_NAME != 'approx. 2 weeks' && $SHIPPING_NAME != 'env. 2 semaines' && $SHIPPING_NAME != 'aprox. 2 semanas'}
+          {include file="module/includes/shiping_tooltip.html"}
+        {else}
+          <div class="alert alert-dark rounded" role="alert">{1003215|contentAnywhere}</div>
+        {/if}
+
+        {$MODULE_product_options}
+      {/if}
+
+      {* ── Preis-Box ── *}
+      <div class="mrh-pi-price mb-3">
+
+        <div class="pd_price" id="pd_puprice">
+          {if isset($PRODUCTS_FSK18) && $PRODUCTS_FSK18 == 'true'}<div class="pd_fsk18"></div>{/if}
+          {foreach name=inner item=price_data from=$PRODUCTS_PRICE_ARRAY}
+            {include file="module/includes/price_info.html"}
+          {/foreach}
+        </div>
+
+        {if $PRODUCTS_PRICE_ARRAY.0.PRODUCTS_PRICE_FLAG != 'NotAllowed'}
+          {if $PRODUCTS_VPE}<div class="pd_vpe text-secondary small">{$PRODUCTS_VPE}</div>{/if}
+          <div class="pd_tax text-secondary small">
+            {$PRODUCTS_TAX_INFO}{if $PRODUCTS_SHIPPING_LINK}{$PRODUCTS_SHIPPING_LINK}{/if}
+          </div>
+        {/if}
+
+        {if isset($PRODUCTS_FSK18) && $ADD_CART_BUTTON == '' && $PRODUCTS_FSK18 == 'true'}
+          <div class="text-danger small mt-1">{#products_fsk18_check#}</div>
+        {/if}
+      </div>
+
+      {* Staffelpreise *}
+      {if isset($MODULE_graduated_price) && $MODULE_graduated_price != ''}
+        {$MODULE_graduated_price}
+      {/if}
+
+      {* ── PayPal Plan ── *}
+      {if isset($PAYPALPLAN) && $PAYPALPLAN}
+        <div class="card bg-custom p-2 mb-2">{$PAYPALPLAN}</div>
+      {/if}
+
+      {* ── Warenkorb ── *}
+      {if $ADD_CART_BUTTON != ''}
+        <div class="mrh-pi-buy mb-3">
+          <div class="d-flex gap-2 align-items-end">
+            <div style="width:80px">
+              <label for="mrh-qty" class="visually-hidden">{#text_quantity#}</label>
+              {$ADD_QTY|replace:'input':'input class="form-control form-control-sm text-center" id="mrh-qty"'}
+            </div>
+            <div class="flex-grow-1">
+              {$ADD_CART_BUTTON|replace:'btn ':'btn mrh-btn-primary btn-lg w-100 '}
+            </div>
+          </div>
+          {if $PRODUCTS_QUANTITY > 0}
+            {if isset($ADD_CART_BUTTON_EXPRESS) && !$PAYPALPLAN}
+              <div class="mt-2">{$ADD_CART_BUTTON_EXPRESS|replace:'btn ':'btn btn-outline-secondary btn-sm w-100 '}</div>
+            {/if}
+            {if isset($ADD_CART_BUTTON_PAYPAL) && !$PAYPALPLAN}
+              <div class="mt-2">{$ADD_CART_BUTTON_PAYPAL}</div>
+            {/if}
+          {/if}
+        </div>
+      {/if}
+
+      {* ── PayPal Ratenzahlung / EasyCredit ── *}
+      {if isset($PAYPAL_INSTALLMENT) && $PAYPAL_INSTALLMENT && !$PAYPALPLAN}
+        <div class="mb-2">{$PAYPAL_INSTALLMENT}</div>
+      {/if}
+      {if isset($EASYCREDIT) && $EASYCREDIT && !$PAYPALPLAN}
+        <div class="mb-2">{$EASYCREDIT}</div>
+      {/if}
+
+      {* ── Warnungen ── *}
+      {if $ADD_CART_BUTTON == '' && isset($PRODUCTS_GIFT_FORBIDDEN) && $PRODUCTS_GIFT_FORBIDDEN == 'true'}
+        <div class="alert alert-warning">{#products_gift_forbidden#}</div>
+      {/if}
+      {if isset($PRODUCTS_DATE_AVAILABLE) && $PRODUCTS_DATE_AVAILABLE != ''}
+        <div class="alert alert-warning">{$PRODUCTS_DATE_AVAILABLE}</div>
+      {/if}
+
+      {* ── Aktions-Buttons (alle mit Icon + Text, mehrsprachig) ── *}
+      <div class="mrh-pi-actions d-flex flex-wrap align-items-center gap-2 mb-3">
+        {* 1. Drucken *}
+        <a href="javascript:void(0)" class="btn mrh-btn-action btn-sm" title="{#MRH_btn_print#}"
+           onclick="window.print(); return false;">
+          <span class="fa-solid fa-print me-1"></span>
+          <span>{#MRH_btn_print#}</span>
+        </a>
+        {* 2. Frage zum Produkt *}
+        {if isset($PRODUCT_INQUIRY)}
+          {$PRODUCT_INQUIRY}
+        {/if}
+        {* 3. Merkzettel *}
+        {if isset($ADD_CART_BUTTON_WISHLIST) && $ADD_CART_BUTTON_WISHLIST != ''}
+          <div class="mrh-action-btn">
+            <button type="submit" name="wishlist" class="btn mrh-btn-wishlist btn-sm">
+              <span class="fa-regular fa-heart me-1"></span>
+              <span>{#MRH_btn_wishlist#}</span>
+            </button>
+          </div>
+        {/if}
+        {* 4. Vergleichen *}
+        {if $smarty.const.MODULE_PRODUCT_COMPARE_STATUS == 'true'}
+          <button type="button" class="btn mrh-btn-compare btn-sm"
+                  data-product-id="{$PRODUCTS_ID}"
+                  onclick="event.preventDefault(); window.ProductCompare && window.ProductCompare.toggle('{$PRODUCTS_ID}', this);">
+            <span class="fa-solid fa-scale-balanced me-1"></span>
+            <span>{#MRH_btn_compare#}</span>
+          </button>
+        {/if}
+        {* 5. Rezension schreiben *}
+        {if $smarty.session.customers_status.customers_status_write_reviews == 1}
+          {if isset($PRODUCTS_WRITE_REVIEW)}
+            <span>{$PRODUCTS_WRITE_REVIEW}</span>
+          {/if}
+        {/if}
+        {* Günstig-Button (falls vorhanden) *}
+        {if isset($PRODUCTS_CHEAPLY)}
+          <span class="small">{$PRODUCTS_CHEAPLY}</span>
+        {/if}
+      </div>
+
+      {* ── Express Checkout ── *}
+      {if isset($EXPRESS_LINK) && isset($ACTIVATE_EXPRESS_LINK) && $ACTIVATE_EXPRESS_LINK}
+        <div class="dropdown mb-3">
+          <a href="#" role="button" id="dropdownMenuLink"
+             class="btn mrh-btn-express btn-sm dropdown-toggle"
+             data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <span class="fa fa-info-circle me-1"></span> {#checkout_express_infotext#}
+          </a>
+          <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuLink">
+            {$EXPRESS_LINK|replace:'class="':'class="dropdown-item '|replace:'</a>':'&nbsp;&nbsp;<span class="fa fa-info-circle"></span></a>'}
+            <a class="dropdown-item" href="{$ACTIVATE_EXPRESS_LINK}">{#checkout_express_activate#}</a>
+          </div>
+        </div>
+      {else}
+        {if isset($EXPRESS_LINK)}
+          <div class="mb-3">{$EXPRESS_LINK}</div>
+        {/if}
+        {if isset($ACTIVATE_EXPRESS_LINK) && $ACTIVATE_EXPRESS_LINK}
+          <div class="mb-3">
+            <a class="btn mrh-btn-express btn-sm" href="{$ACTIVATE_EXPRESS_LINK}">
+              <span class="fa fa-bolt me-1"></span> {#checkout_express_activate#}
+            </a>
+          </div>
+        {/if}
+      {/if}
+
+      {* ── Artikelnummer / EAN / Meta ── *}
+      <div class="mrh-pi-meta small text-muted mb-3">
+        {if $PRODUCTS_MODEL != ''}
+          <div><strong>{#model#}:</strong> <span>{$PRODUCTS_MODEL}</span></div>
+        {/if}
+        {if isset($PRODUCTS_EAN) && $PRODUCTS_EAN != ''}
+          <div><strong>EAN:</strong> <span>{$PRODUCTS_EAN}</span></div>
+        {/if}
+        {if $PRODUCTS_MANUFACTURERS_MODEL != ''}
+          <div><strong>{#products_manufacturer_model#}:</strong> <span>{$PRODUCTS_MANUFACTURERS_MODEL}</span></div>
+        {/if}
+        {if $PRODUCTS_ADDED != ''}
+          <div class="text-secondary">{$PRODUCTS_ADDED}</div>
+        {/if}
+      </div>
+
+      {* ── Lieferzeit ── *}
+      {if $SHIPPING_NAME}
+        <div class="mrh-pi-shipping small mb-3">
+          <span class="fa fa-truck me-1 text-success"></span>
+          <strong>{#text_shippingtime#}</strong>
+          {if isset($SHIPPING_IMAGE) && $SHIPPING_IMAGE != ''}
+            <img class="ms-1" src="{$SHIPPING_IMAGE}" alt="{$SHIPPING_NAME}" style="height:16px" />
+          {/if}
+          {$SHIPPING_NAME_LINK}
+        </div>
+      {/if}
+
+      {* ── Trust-Icons ── *}
+      <div class="mrh-trust-bar d-flex justify-content-between text-center flex-wrap mb-3 py-3 border-top border-bottom">
+        <div class="p-2 flex-fill">
+          <span class="fa fa-shield-halved fa-2x text-secondary mb-2 d-block"></span>
+          <small>{#p_info1#}</small>
+        </div>
+        <div class="p-2 flex-fill">
+          <span class="fa fa-credit-card fa-2x text-secondary mb-2 d-block"></span>
+          <small>{#p_info2#}</small>
+        </div>
+        <div class="p-2 flex-fill">
+          <span class="fa fa-truck-fast fa-2x text-secondary mb-2 d-block"></span>
+          <small>{#p_info3#}</small>
+        </div>
+        <div class="p-2 flex-fill">
+          <span class="fa fa-location-dot fa-2x text-secondary mb-2 d-block"></span>
+          <small>{#p_info4#}</small>
+        </div>
+      </div>
+
+      {* ── ShopVote Widget ── *}
+      {if $smarty.const.MRH_SHOPVOTE_PRODUCT_PAGE == 'true'}
+        {assign var="shopvote_type" value="product"}
+        {include file="`$smarty.const.CURRENT_TEMPLATE`/module/includes/shopvote_widget.html"}
+      {/if}
+
+    </div>
+  </div>
+
+  {$FORM_END}
+
+  {* ══════════════════════════════════════════════════════════════
+     3. EIGENSCHAFTS-BILDKARTEN (MRH Characteristics)
+     ══════════════════════════════════════════════════════════════
+     TODO: Dieses Modul muss noch entwickelt werden.
+     Datenquelle: $PRODUCTS_MRH_CHARACTERISTICS_CARDS (Array)
+     Jede Karte: Bild, Icon, Titel, Kurztext
+     Aktuell Platzhalter – wird über separates Include gelöst.
+  *}
+  {if isset($PRODUCTS_MRH_CHARACTERISTICS_CARDS) && count($PRODUCTS_MRH_CHARACTERISTICS_CARDS) > 0}
+    <section class="mrh-characteristics-grid mt-5 mb-4" aria-label="{#MRH_characteristics_heading#}">
+      <h2 class="h5 fw-bold mb-4">
+        <span class="fa fa-star me-2 text-warning"></span>{#MRH_characteristics_heading#}
+      </h2>
+      <div class="row row-cols-2 row-cols-md-4 g-3">
+        {foreach name=chars item=char from=$PRODUCTS_MRH_CHARACTERISTICS_CARDS}
+          <div class="col">
+            <div class="card h-100 border-0 shadow-sm text-center">
+              {if isset($char.IMAGE) && $char.IMAGE != ''}
+                <img src="{$char.IMAGE}" alt="{$char.TITLE|onlytext}" class="card-img-top"
+                     loading="lazy" width="300" height="200" style="object-fit:cover;aspect-ratio:3/2;" />
+              {/if}
+              <div class="card-body p-3">
+                {if isset($char.ICON) && $char.ICON != ''}
+                  <span class="{$char.ICON} fa-lg mb-2 d-block" style="color:{$char.COLOR|default:'#16a34a'}"></span>
+                {/if}
+                <h3 class="card-title small fw-bold mb-1">{$char.TITLE}</h3>
+                <p class="card-text small text-muted mb-0">{$char.TEXT}</p>
+              </div>
+            </div>
+          </div>
+        {/foreach}
+      </div>
+    </section>
+  {/if}
+
+  {* ══════════════════════════════════════════════════════════════
+     4. BESCHREIBUNG (volle Breite)
+     ══════════════════════════════════════════════════════════════ *}
+  {if $PRODUCTS_DESCRIPTION != ''}
+    <div class="mrh-product-description mt-5 mb-4">
+      <h2 class="h5 fw-bold mb-3">
+        <span class="fa fa-align-left me-2 text-secondary"></span>{#text_tab_description#}
+      </h2>
+      {$PRODUCTS_DESCRIPTION}
+    </div>
+  {/if}
+
+  {* ══════════════════════════════════════════════════════════════
+     5. FAQ-PLATZHALTER
+     ══════════════════════════════════════════════════════════════
+     TODO: Separates FAQ-Modul mit Admin-CRUD + Schema.org FAQPage
+     Wird als eigenes Include entwickelt:
+     {include file="module/includes/faq_product.html"}
+  *}
+  <section class="mrh-faq-placeholder mt-4 mb-4 p-4 border border-2 border-dashed rounded" aria-label="FAQ">
+    <h2 class="h5 fw-bold mb-3">
+      <span class="fa fa-circle-question me-2 text-secondary"></span>{#MRH_faq_heading#|default:'Häufig gestellte Fragen'}
+    </h2>
+    <p class="text-muted small mb-0">
+      <span class="fa fa-code me-1"></span>
+      FAQ-Modul wird als separates Modified-Modul entwickelt. Platzhalter für Wireframe-Vorschau.
+    </p>
+  </section>
+
+  {* ══════════════════════════════════════════════════════════════
+     6. ACCORDION: Bewertungen + Hersteller-Info
+     ══════════════════════════════════════════════════════════════ *}
+  <div class="accordion mb-4" id="productAccordion">
+
+    {* Bewertungen *}
+    {if isset($MODULE_products_reviews) && $MODULE_products_reviews != ''}
+      <div class="accordion-item" id="mrh-reviews">
+        <h2 class="accordion-header" id="reviewsHeading">
+          <button class="accordion-button" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#reviewsCollapse"
+                  aria-expanded="true" aria-controls="reviewsCollapse">
+            <span class="fa fa-star me-2 text-warning"></span>
+            {#heading_reviews#}
+            {if isset($PRODUCTS_RATING_COUNT) && $PRODUCTS_RATING_COUNT > 0}
+              <span class="badge bg-secondary ms-2">{$PRODUCTS_RATING_COUNT}</span>
+            {/if}
+          </button>
+        </h2>
+        <div id="reviewsCollapse" class="accordion-collapse collapse show"
+             aria-labelledby="reviewsHeading" data-bs-parent="#productAccordion">
+          <div class="accordion-body">
+            {$MODULE_products_reviews}
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    {* Hersteller-Info *}
+    {if isset($MANUFACTURER_CONTACT_ADDRESS) || isset($MANUFACTURER_RESPONSIBLE_ADDRESS) || (isset($MANUFACTURER_ADD_DESCRIPTION) && $MANUFACTURER_ADD_DESCRIPTION != '')}
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="manufacturerInfoHeading">
+          <button class="accordion-button collapsed" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#manufacturerInfoCollapse"
+                  aria-expanded="false" aria-controls="manufacturerInfoCollapse">
+            <span class="fa fa-industry me-2 text-secondary"></span>
+            {#manufacturers_info#}
+          </button>
+        </h2>
+        <div id="manufacturerInfoCollapse" class="accordion-collapse collapse"
+             aria-labelledby="manufacturerInfoHeading" data-bs-parent="#productAccordion">
+          <div class="accordion-body">
+            {if isset($MANUFACTURER_ADD_DESCRIPTION) && $MANUFACTURER_ADD_DESCRIPTION != ''}
+              <div class="mb-3">{$MANUFACTURER_ADD_DESCRIPTION}</div>
+            {/if}
+            {if isset($MANUFACTURER_CONTACT_ADDRESS) || isset($MANUFACTURER_RESPONSIBLE_ADDRESS)}
+              <div class="row">
+                {if isset($MANUFACTURER_CONTACT_ADDRESS)}
+                  <div class="col-md-6 mb-3">
+                    <h6 class="fw-bold">{#manufacturers_heading_contact#}</h6>
+                    {$MANUFACTURER_CONTACT_ADDRESS}
+                  </div>
+                {/if}
+                {if isset($MANUFACTURER_RESPONSIBLE_ADDRESS)}
+                  <div class="col-md-6 mb-3">
+                    <h6 class="fw-bold">{#manufacturers_heading_responsible#}</h6>
+                    {$MANUFACTURER_RESPONSIBLE_ADDRESS}
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        </div>
+      </div>
+    {/if}
+
+  </div>
+
+  {* ══════════════════════════════════════════════════════════════
+     7. CROSS-SELLING / AUCH GEKAUFT / KATEGORIE
+     ══════════════════════════════════════════════════════════════ *}
+  {if isset($MODULE_cross_selling) && $MODULE_cross_selling != '' || (isset($MODULE_reverse_cross_selling) && $MODULE_reverse_cross_selling != '')}
+    <div class="mb-4">
+      {if isset($MODULE_cross_selling) && $MODULE_cross_selling != ''}{$MODULE_cross_selling}{/if}
+      {if isset($MODULE_reverse_cross_selling) && $MODULE_reverse_cross_selling != ''}{$MODULE_reverse_cross_selling}{/if}
+    </div>
+  {/if}
+
+  {if isset($MODULE_also_purchased) && $MODULE_also_purchased != ''}
+    <div class="mb-4">{$MODULE_also_purchased}</div>
+  {/if}
+
+  {if isset($MODULE_products_category) && $MODULE_products_category != ''}
+    <div class="mb-4">{$MODULE_products_category}</div>
+  {/if}
+
+  {* ── Zuletzt angesehen ── *}
+  {if isset($box_LAST_VIEWED)}
+    <div class="mb-4">{$box_LAST_VIEWED}</div>
+  {/if}
+
+  {* ── Produkt-Navigator ── *}
+  {$PRODUCT_NAVIGATOR}
+
+</article>
+
+{* ══════════════════════════════════════════════════════════════
+   8. SCHEMA.ORG JSON-LD
+   ══════════════════════════════════════════════════════════════ *}
+{include file="`$smarty.const.CURRENT_TEMPLATE`/module/includes/schema_org_product.html"}
+
+
+{* ── eTrusted Widget ── *}
+{if $smarty.const.MRH_ETRUSTED_SHOW == 'true'}
+  <div class="mt-2 mb-2">
+    <etrusted-widget data-etrusted-widget-id="wdg-9b0f30e0-f8b5-4012-9b01-99983d899434"></etrusted-widget>
+  </div>
+{/if}
+
+{* ══════════════════════════════════════════════════════════════
+   FULLSCREEN LIGHTBOX MODAL
+   ══════════════════════════════════════════════════════════════ *}
+<div class="mrh-lightbox-backdrop" id="mrhLightboxBackdrop" aria-hidden="true"></div>
+<div class="mrh-lightbox" id="mrhLightbox" role="dialog" aria-modal="true" aria-label="Bildergalerie" aria-hidden="true" tabindex="-1">
+  <div class="mrh-lightbox__header">
+    <span class="mrh-lightbox__counter" id="mrhLightboxCounter"></span>
+    <button type="button" class="mrh-lightbox__close" id="mrhLightboxClose" aria-label="Schließen">
+      <span class="fa fa-times"></span>
+    </button>
+  </div>
+  <div class="mrh-lightbox__body" id="mrhLightboxBody">
+    <button type="button" class="mrh-lightbox__nav mrh-lightbox__prev" id="mrhLightboxPrev" aria-label="Vorheriges Bild">
+      <span class="fa fa-chevron-left"></span>
+    </button>
+    <div class="mrh-lightbox__image-wrap" id="mrhLightboxImageWrap">
+      <img id="mrhLightboxImg" src="" alt="" />
+    </div>
+    <button type="button" class="mrh-lightbox__nav mrh-lightbox__next" id="mrhLightboxNext" aria-label="Nächstes Bild">
+      <span class="fa fa-chevron-right"></span>
+    </button>
+  </div>
+</div>
+
+{* ══════════════════════════════════════════════════════════════
+   STYLES – Scoped via .mrh-
+   ══════════════════════════════════════════════════════════════ *}
+<style>
+/* ── Gallery Main ── */
+.mrh-gallery-main {
+  position: relative;
+}
+
+.mrh-zoom-container {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--mrh-border, #E2E8F0);
+  border-radius: var(--mrh-radius-lg, 0.75rem);
+  background: var(--mrh-bg, #F8FAFC);
+  cursor: crosshair;
+}
+
+.mrh-zoom-container img.mrh-zoom-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: opacity 0.2s ease;
+}
+
+/* Zoom-Lens */
+.mrh-zoom-lens {
+  display: none;
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border: 2px solid var(--mrh-green, #16A34A);
+  border-radius: 4px;
+  background: rgba(22, 163, 74, 0.08);
+  pointer-events: none;
+  z-index: 5;
+  transition: opacity 0.15s ease;
+}
+
+.mrh-zoom-container.is-zooming .mrh-zoom-lens {
+  display: block;
+}
+
+/* Zoom-Flyout */
+.mrh-zoom-flyout {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: calc(100% + 16px);
+  width: 400px;
+  height: 400px;
+  border: 1px solid var(--mrh-border, #E2E8F0);
+  border-radius: var(--mrh-radius-lg, 0.75rem);
+  background: #fff;
+  overflow: hidden;
+  z-index: 100;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  pointer-events: none;
+}
+
+.mrh-zoom-container.is-zooming ~ .mrh-zoom-flyout {
+  display: block;
+}
+
+.mrh-zoom-flyout img {
+  position: absolute;
+  max-width: none;
+  max-height: none;
+}
+
+/* Zoom-Hint Icon */
+.mrh-zoom-hint {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.9);
+  border-radius: 50%;
+  color: var(--mrh-slate, #64748B);
+  font-size: 0.875rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.mrh-zoom-container.is-zooming .mrh-zoom-hint {
+  opacity: 0;
+}
+
+/* Fullscreen Button */
+.mrh-gallery-fullscreen-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.9);
+  border: none;
+  border-radius: 50%;
+  color: var(--mrh-slate, #64748B);
+  font-size: 0.875rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.mrh-gallery-fullscreen-btn:hover {
+  background: var(--mrh-green, #16A34A);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* ── Thumbnails ── */
+.mrh-thumb-btn {
+  width: 72px;
+  height: 72px;
+  padding: 2px;
+  border: 2px solid var(--mrh-border, #E2E8F0);
+  border-radius: var(--mrh-radius, 0.5rem);
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.mrh-thumb-btn:hover {
+  border-color: var(--mrh-slate-lt, #CBD5E1);
+}
+
+.mrh-thumb-btn.active {
+  border-color: var(--mrh-green, #16A34A);
+  box-shadow: 0 0 0 1px var(--mrh-green, #16A34A);
+}
+
+.mrh-thumb-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: calc(var(--mrh-radius, 0.5rem) - 4px);
+}
+
+/* ── Lightbox ── */
+.mrh-lightbox-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.92);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mrh-lightbox-backdrop.is-active {
+  display: block;
+  opacity: 1;
+}
+
+.mrh-lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  flex-direction: column;
+}
+
+.mrh-lightbox.is-active {
+  display: flex;
+}
+
+.mrh-lightbox__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  flex-shrink: 0;
+}
+
+.mrh-lightbox__counter {
+  color: rgba(255,255,255,0.7);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.mrh-lightbox__close {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.mrh-lightbox__close:hover {
+  background: rgba(255,255,255,0.2);
+  color: #f87171;
+}
+
+.mrh-lightbox__body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem 1rem;
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+.mrh-lightbox__image-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+}
+
+.mrh-lightbox__image-wrap img {
+  max-width: 100%;
+  max-height: calc(100vh - 120px);
+  object-fit: contain;
+  border-radius: 4px;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.mrh-lightbox__nav {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 1.125rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.mrh-lightbox__nav:hover {
+  background: rgba(255,255,255,0.2);
+  transform: scale(1.1);
+}
+
+/* Trust Bar */
+.mrh-trust-bar .fa {
+  display: block;
+}
+
+/* Characteristics Grid */
+.mrh-characteristics-grid .card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.mrh-characteristics-grid .card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+
+/* Sticky Gallery (Desktop) */
+@media (min-width: 992px) {
+  .position-lg-sticky {
+    position: sticky !important;
+  }
+}
+
+/* ── Mobile Anpassungen ── */
+@media (max-width: 991.98px) {
+  .mrh-zoom-flyout,
+  .mrh-zoom-lens,
+  .mrh-zoom-hint {
+    display: none !important;
+  }
+  .mrh-zoom-container {
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .mrh-thumb-btn {
+    width: 60px;
+    height: 60px;
+  }
+  .mrh-lightbox__nav {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+}
+
+/* Print */
+@media print {
+  .mrh-zoom-flyout,
+  .mrh-zoom-lens,
+  .mrh-zoom-hint,
+  .mrh-gallery-fullscreen-btn,
+  .mrh-lightbox,
+  .mrh-lightbox-backdrop {
+    display: none !important;
+  }
+}
+</style>
+
+{* ══════════════════════════════════════════════════════════════
+   SCRIPT – Vanilla JS Galerie (Hover-Zoom, Thumbnails, Lightbox)
+   ══════════════════════════════════════════════════════════════ *}
+<script>
+(function() {
+  'use strict';
+
+  /* ── DOM-Referenzen ── */
+  var mainImage     = document.getElementById('mrhMainImage');
+  var zoomContainer = document.getElementById('mrhZoomContainer');
+  var zoomLens      = document.getElementById('mrhZoomLens');
+  var zoomFlyout    = document.getElementById('mrhZoomFlyout');
+  var flyoutImg     = document.getElementById('mrhZoomFlyoutImg');
+  var fullscreenBtn = document.getElementById('mrhGalleryFullscreenBtn');
+  var thumbsWrap    = document.getElementById('mrhGalleryThumbs');
+
+  var lightbox      = document.getElementById('mrhLightbox');
+  var lbBackdrop    = document.getElementById('mrhLightboxBackdrop');
+  var lbClose       = document.getElementById('mrhLightboxClose');
+  var lbPrev        = document.getElementById('mrhLightboxPrev');
+  var lbNext        = document.getElementById('mrhLightboxNext');
+  var lbImg         = document.getElementById('mrhLightboxImg');
+  var lbCounter     = document.getElementById('mrhLightboxCounter');
+
+  if (!mainImage) return;
+
+  /* ── Bilder-Array aufbauen ── */
+  var images = [];
+  var currentIndex = 0;
+  var isMobile = window.matchMedia('(max-width: 991.98px)').matches;
+
+  function collectImages() {
+    images = [];
+    if (thumbsWrap) {
+      var btns = thumbsWrap.querySelectorAll('.mrh-thumb-btn');
+      btns.forEach(function(btn) {
+        images.push({
+          popup: btn.getAttribute('data-popup') || '',
+          original: btn.getAttribute('data-original') || '',
+          title: btn.getAttribute('data-title') || ''
+        });
+      });
+    }
+    if (images.length === 0) {
+      images.push({
+        popup: mainImage.src,
+        original: mainImage.getAttribute('data-zoom-src') || mainImage.src,
+        title: mainImage.alt || ''
+      });
+    }
+  }
+  collectImages();
+
+  /* ── THUMBNAIL-WECHSEL ── */
+  if (thumbsWrap) {
+    var thumbTimeout = null;
+
+    thumbsWrap.addEventListener(isMobile ? 'click' : 'mouseenter', function(e) {
+      var btn = e.target.closest('.mrh-thumb-btn');
+      if (!btn) return;
+      clearTimeout(thumbTimeout);
+      thumbTimeout = setTimeout(function() {
+        switchImage(btn);
+      }, isMobile ? 0 : 80);
+    }, true);
+
+    if (!isMobile) {
+      thumbsWrap.addEventListener('click', function(e) {
+        var btn = e.target.closest('.mrh-thumb-btn');
+        if (!btn) return;
+        clearTimeout(thumbTimeout);
+        switchImage(btn);
+      });
+    }
+  }
+
+  function switchImage(btn) {
+    var popup = btn.getAttribute('data-popup');
+    var original = btn.getAttribute('data-original');
+    if (!popup) return;
+    mainImage.src = popup;
+    mainImage.setAttribute('data-zoom-src', original || popup);
+    if (thumbsWrap) {
+      thumbsWrap.querySelectorAll('.mrh-thumb-btn').forEach(function(b, i) {
+        var isActive = (b === btn);
+        b.classList.toggle('active', isActive);
+        b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        if (isActive) currentIndex = i;
+      });
+    }
+
+  }
+
+
+  /* ── FULLSCREEN LIGHTBOX ── */
+  function openLightbox(index) {
+    if (!lightbox || !lbBackdrop) return;
+    if (index < 0) index = images.length - 1;
+    if (index >= images.length) index = 0;
+    currentIndex = index;
+    var img = images[currentIndex];
+    lbImg.src = img.original || img.popup;
+    lbImg.alt = img.title;
+    if (lbCounter) {
+      lbCounter.textContent = (currentIndex + 1) + ' / ' + images.length;
+    }
+    if (lbPrev) lbPrev.style.display = images.length > 1 ? '' : 'none';
+    if (lbNext) lbNext.style.display = images.length > 1 ? '' : 'none';
+    lbBackdrop.classList.add('is-active');
+    lightbox.classList.add('is-active');
+    lightbox.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    lightbox.focus();
+  }
+
+  function closeLightbox() {
+    if (!lightbox || !lbBackdrop) return;
+    lbBackdrop.classList.remove('is-active');
+    lightbox.classList.remove('is-active');
+    lightbox.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    lbImg.src = '';
+  }
+
+  function navigateLightbox(dir) {
+    openLightbox(currentIndex + dir);
+  }
+
+  if (fullscreenBtn) {
+    fullscreenBtn.addEventListener('click', function() {
+      openLightbox(currentIndex);
+    });
+  }
+
+  if (zoomContainer) {
+    zoomContainer.addEventListener('click', function(e) {
+      if (isMobile) {
+        e.preventDefault();
+        openLightbox(currentIndex);
+      }
+    });
+    zoomContainer.addEventListener('dblclick', function(e) {
+      if (!isMobile) {
+        e.preventDefault();
+        openLightbox(currentIndex);
+      }
+    });
+  }
+
+  if (lbClose) lbClose.addEventListener('click', closeLightbox);
+  if (lbBackdrop) lbBackdrop.addEventListener('click', closeLightbox);
+  if (lbPrev) lbPrev.addEventListener('click', function() { navigateLightbox(-1); });
+  if (lbNext) lbNext.addEventListener('click', function() { navigateLightbox(1); });
+
+  document.addEventListener('keydown', function(e) {
+    if (!lightbox || !lightbox.classList.contains('is-active')) return;
+    if (e.key === 'Escape') { closeLightbox(); e.preventDefault(); }
+    if (e.key === 'ArrowLeft') { navigateLightbox(-1); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { navigateLightbox(1); e.preventDefault(); }
+  });
+
+  if (lightbox) {
+    var touchStartX = 0;
+    var touchStartY = 0;
+    lightbox.addEventListener('touchstart', function(e) {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+    lightbox.addEventListener('touchend', function(e) {
+      var diffX = e.changedTouches[0].screenX - touchStartX;
+      var diffY = e.changedTouches[0].screenY - touchStartY;
+      if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+        if (diffX > 0) navigateLightbox(-1);
+        else navigateLightbox(1);
+      }
+    }, { passive: true });
+  }
+
+  var resizeTimeout;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(function() {
+      isMobile = window.matchMedia('(max-width: 991.98px)').matches;
+    }, 250);
+  }, { passive: true });
+
+})();
+</script>
+
+{* ── Shariff v3.3.1 JS (DSGVO-konform, nur auf Produktseite) ── *}
+<script src="{$tpl_path}javascript/shariff.min.js" defer></script>
