@@ -173,7 +173,10 @@
   overflow: hidden;
   border: 1px solid var(--mrh-border, #E2E8F0);
   border-radius: var(--mrh-radius-lg, 0.75rem);
-  background: var(--mrh-bg, #F8FAFC);
+  background-color: var(--mrh-bg, #F8FAFC);
+  background-repeat: no-repeat;
+  background-size: 200% 200%;
+  background-position: 50% 50%;
   cursor: crosshair;
 }
 
@@ -537,6 +540,7 @@
         zoomContainer.style.backgroundImage = 'url("' + zoomSrc + '")';
         zoomContainer.style.backgroundRepeat = 'no-repeat';
         zoomContainer.style.backgroundSize = '200% 200%';
+        zoomContainer.style.backgroundPosition = '50% 50%';
         zoomImageLoaded = true;
         if (callback) callback();
       };
