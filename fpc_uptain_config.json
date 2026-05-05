@@ -1,0 +1,8 @@
+{
+    "uptain_id": "IH5EZrk9Z13q5Wvv",
+    "enabled": true,
+    "cookie_consent": true,
+    "async": true,
+    "debug": false,
+    "_comment": "Config fuer FPC-Uptain-Injection. uptain_id wird aus DB geladen, hier als Fallback."
+}
