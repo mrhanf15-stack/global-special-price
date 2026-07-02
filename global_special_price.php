@@ -23,6 +23,8 @@
          - Neu: Spalte zeigt vorhandene Sonderpreise pro Kategorie an
     v1.3 - Spalte zeigt jetzt auch Rabatt-% und Gueltigkeitsdaten (ab/bis)
          - Sortierung: Kategorien mit aktiven Specials werden nach vorne gereiht
+    v1.4 - Fix: Loeschen entfernt Sonderpreise NUR bei Lagerstand = 0
+         - Produkte mit Lager behalten ihren Sonderpreis
    -----------------------------------------------------------------------------------------------
  */
 
@@ -61,7 +63,10 @@ switch ($action) {
 
         while ($cat_products = xtc_db_fetch_array($cat_products_query)) {
             if ($_POST['special_delete'] == 1) {
-                xtc_db_query("DELETE FROM " . TABLE_SPECIALS . " WHERE products_id = '" . xtc_db_input((int)$cat_products['products_id']) . "'");
+                // Nur Sonderpreise loeschen bei Lagerstand = 0
+                if ((int)$cat_products['products_quantity'] <= 0) {
+                    xtc_db_query("DELETE FROM " . TABLE_SPECIALS . " WHERE products_id = '" . xtc_db_input((int)$cat_products['products_id']) . "'");
+                }
             } elseif ($_POST['special'] == 1) {
                 $specials_query = xtc_db_query("SELECT * FROM " . TABLE_SPECIALS . " WHERE products_id = '" . (int)$cat_products['products_id'] . "'");
                 if (empty($_POST['specials_quantity'])) {
@@ -157,7 +162,7 @@ require_once (DIR_WS_INCLUDES.'javascript/jQueryDateTimePicker/datepicker.js.php
 
             <div class="pageHeadingImage"><?php echo xtc_image(DIR_WS_ICONS . 'heading/icon_configuration.png'); ?></div>
             <div class="pageHeading"><?php echo HEADING_TITLE; ?></div>
-            <div class="main pdg2 flt-l"><?php echo 'Global Special Price v1.3'; ?><br /></div>
+            <div class="main pdg2 flt-l"><?php echo 'Global Special Price v1.4'; ?><br /></div>
                 <table class="main important_info" width="100%" border="0" cellspacing="1" cellpadding="2">
                     <tr>
                         <td class="main"><?php echo CONTENT_NOTE; ?></td>
